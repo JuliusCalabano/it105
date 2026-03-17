@@ -1,0 +1,760 @@
+<!doctype html>
+<html lang="en" class="h-full">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IT105 - Timed Quiz Challenge</title>
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <script src="/_sdk/element_sdk.js"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap"
+        rel="stylesheet">
+    <style>
+        * {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        @keyframes pulse-ring {
+            0% {
+                transform: scale(0.95);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1.05);
+                opacity: 0.8;
+            }
+
+            100% {
+                transform: scale(0.95);
+                opacity: 1;
+            }
+        }
+
+        @keyframes countdown-warning {
+
+            0%,
+            100% {
+                background-color: #ef4444;
+            }
+
+            50% {
+                background-color: #dc2626;
+            }
+        }
+
+        @keyframes slide-in {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes correct-flash {
+            0% {
+                background-color: #22c55e;
+            }
+
+            100% {
+                background-color: #16a34a;
+            }
+        }
+
+        @keyframes wrong-flash {
+            0% {
+                background-color: #ef4444;
+            }
+
+            100% {
+                background-color: #dc2626;
+            }
+        }
+
+        .animate-slide-in {
+            animation: slide-in 0.4s ease-out forwards;
+        }
+
+        .timer-warning {
+            animation: countdown-warning 0.5s ease-in-out infinite;
+        }
+
+        .timer-ring {
+            animation: pulse-ring 1s ease-in-out infinite;
+        }
+
+        .option-btn {
+            transition: all 0.2s ease;
+        }
+
+        .option-btn:hover:not(:disabled) {
+            transform: translateX(8px);
+            border-color: #8b5cf6;
+        }
+
+    
+        .wrong-answer {
+            animation: wrong-flash 0.3s ease forwards;
+            color: white !important;
+            border-color: #ef4444 !important;
+        }
+
+        .progress-fill {
+            transition: width 0.3s ease;
+        }
+    </style>
+    <style>
+        body {
+            box-sizing: border-box;
+        }
+    </style>
+    
+
+    <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+</head>
+
+<body class="h-full bg-slate-900 text-white overflow-auto">
+    <div id="app" class="w-full min-h-full flex flex-col items-center justify-center p-6"><!-- Start Screen -->
+        <div id="start-screen" class="text-center max-w-lg animate-slide-in">
+            <div class="mb-8">
+                <div
+                    class="w-24 h-24 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-5xl shadow-lg shadow-violet-500/30">
+                    🧠
+                </div>
+                <h1 id="quiz-title"
+                    class="text-4xl font-bold mb-3 bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent">
+                    IT105 - Timed Quiz Challenge</h1>
+                <p class="text-slate-400 text-lg">Test your knowledge with <span id="question-count1"></span> questions</p>
+            </div>
+            <div class="bg-slate-800/50 rounded-2xl p-6 mb-8 border border-slate-700">
+                <div class="grid grid-cols-2 gap-4 text-left">
+                    <div class="flex items-center gap-3">
+                        <div
+                            class="w-10 h-10 rounded-xl bg-violet-500/20 flex items-center justify-center text-violet-400">
+                            📝
+                        </div>
+                        <div>
+                            <p class="text-slate-400 text-sm">Questions</p>
+                            <p class="font-semibold"><span id="question-count2"></span> Total</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div
+                            class="w-10 h-10 rounded-xl bg-fuchsia-500/20 flex items-center justify-center text-fuchsia-400">
+                            ⏱️
+                        </div>
+                        <div>
+                            <p class="text-slate-400 text-sm">Time Limit</p>
+                            <p class="font-semibold">60 sec/question</p>
+                        </div>
+                    </div>
+                </div>
+            </div><button id="start-btn" onclick="startQuiz()"
+                class="w-full py-4 px-8 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 rounded-xl font-semibold text-lg transition-all hover:scale-105 hover:shadow-lg hover:shadow-violet-500/30">
+                Start Quiz </button>
+        </div><!-- Quiz Screen -->
+        <div id="quiz-screen" class="w-full max-w-2xl hidden"><!-- Progress Bar -->
+            <div class="mb-6">
+                <div class="flex justify-between items-center mb-2"><span class="text-slate-400 text-sm">Question <span
+                            id="current-q" class="text-white font-semibold">1</span> of <span id="question-count3"></span></span> <span
+                        class="text-slate-400 text-sm">Score: <span id="current-score"
+                            class="text-violet-400 font-semibold">0</span></span>
+                </div>
+                <div class="h-2 bg-slate-800 rounded-full overflow-hidden">
+                    <div id="progress-bar" class="h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 progress-fill"
+                        style="width: 5%"></div>
+                </div>
+            </div><!-- Timer -->
+            <div class="flex justify-center mb-6">
+                <div id="timer-container"
+                    class="w-20 h-20 rounded-full bg-slate-800 border-4 border-violet-500 flex items-center justify-center timer-ring">
+                    <span id="timer" class="mono text-2xl font-bold">60</span>
+                </div>
+            </div><!-- Question Card -->
+            <div id="question-card"
+                class="bg-slate-800/50 rounded-2xl p-8 border border-slate-700 mb-6 animate-slide-in">
+                <h2 id="question-text" class="text-xl font-semibold mb-6 leading-relaxed"></h2>
+                <div id="options-container" class="space-y-3"><!-- Options will be inserted here -->
+                </div>
+            </div><!-- Feedback -->
+            <div id="feedback" class="text-center py-3 rounded-xl font-semibold hidden"></div>
+        </div>
+        
+        <!-- Results Screen -->
+
+
+        <div id="results-screen" class="text-center max-w-lg hidden">
+            <div class="animate-slide-in">
+                <div id="result-emoji" class="text-7xl mb-6">
+                    🏆
+                </div>
+                <h2 class="text-3xl font-bold mb-2">Quiz Complete!</h2>
+                <p class="text-slate-400 mb-8">Here's how you did</p>
+                <div class="bg-slate-800/50 rounded-2xl p-8 border border-slate-700 mb-8">
+                    <div
+                        class="text-6xl font-bold bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent mb-2">
+                        <span id="final-score">0</span>/ 
+                        <span id="question-count4"></span>
+                    </div>
+                    <p class="text-slate-400 mb-6">Correct Answers</p>
+                    <div class="grid grid-cols-3 gap-4 text-center">
+                        <div class="bg-slate-700/50 rounded-xl p-4">
+                            <p id="correct-count" class="text-2xl font-bold text-green-400">0</p>
+                            <p class="text-slate-400 text-sm">Correct</p>
+                        </div>
+                        <div class="bg-slate-700/50 rounded-xl p-4">
+                            <p id="wrong-count" class="text-2xl font-bold text-red-400">0</p>
+                            <p class="text-slate-400 text-sm">Wrong</p>
+                        </div>
+                        <div class="bg-slate-700/50 rounded-xl p-4">
+                            <p id="timeout-count" class="text-2xl font-bold text-yellow-400">0</p>
+                            <p class="text-slate-400 text-sm">Timeout</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex gap-4"><button onclick="restartQuiz()"
+                        class="flex-1 py-4 px-6 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 rounded-xl font-semibold transition-all hover:scale-105">
+                        Try Again </button> <button onclick="reviewAnswers()"
+                        class="flex-1 py-4 px-6 bg-slate-700 hover:bg-slate-600 rounded-xl font-semibold transition-all">
+                        Review </button>
+                </div>
+
+                <!-- Submit score function -->
+                <div class="mt-6">
+                    <input id="student-name" type="text" placeholder="Enter your name"
+                        class="w-full p-3 rounded-lg text-black mb-3">
+
+                    <button onclick="submitScore()" class="w-full py-3 bg-green-600 rounded-lg">
+                        Submit Score
+                    </button>
+                </div>
+
+            </div>
+        </div>
+        
+        
+        <!-- Review Screen -->
+
+
+        <div id="review-screen" class="w-full max-w-2xl hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">Review Answers</h2><button onclick="backToResults()"
+                    class="py-2 px-4 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition-all"> ← Back
+                </button>
+            </div>
+            <div id="review-container" class="space-y-4"></div>
+        </div>
+    </div>
+    <script>
+        const defaultConfig = {
+            quiz_title: 'IT105 - Timed Quiz Challenge',
+            start_button_text: 'Start Quiz'
+        };
+        
+            
+        const allQuestions = [
+             //{ question: "A small online business sells customized mugs. The owner only produces the mugs after customers submit orders and payments. This approach helps the owner avoid unsold inventory. Which revenue model is being used?", options: ["Reseller Model", "Pre-Order Model", "Subscription Model", "Wholesale Model"], 
+            //{ question: "A business owner notices that customers often visit the website but leave without placing orders. After analyzing the site, the owner realizes there are no clear buttons encouraging customers to purchase. Which strategy would MOST effectively address this issue?", options: ["Add Call-To-Action buttons", "Increase product prices", "Use advertisement", "Encourage Product to Buy"],
+            //{ question: "A business sells school supplies online. Customers occasionally receive messages saying items are unavailable after placing orders. Which problem is MOST likely occurring?", options: ["Poor customer service", "Lack of inventory monitoring", "Problem about item", "Incorrect packaging"], correct: 
+            //{ question: "A customer asks several questions about delivery time, payment options, and product availability. The seller replies after two days. What is the MOST likely impact?", options: ["Impact for customer satisfaction", "Increased sales", "Loss of potential customers", "Improved business reputation"], 
+            //{ question: "A seller frequently receives the same questions from customers about payment methods and delivery schedules. What is the MOST efficient solution?", options: ["Ignore repeated questions", "Enable customer messaging", "Reply to all questions and inquiries", "Create prepared FAQ responses"], 
+
+            //{ question: "An entrepreneur receives negative feedback from a customer regarding damaged packaging. What is the BEST response?", options: ["Ignore the complaint it is normal sometimes", "Respond politely and offer a solution", "Message the customer about the complaint", "Delete the feedback and don’t let other see it"], 
+            //{ question: "A seller frequently forgets which orders have already been shipped. Which practice would BEST solve this issue?", options: ["Order tracking system", "Product order and shipment labeling", "Logbook of orders and shipped products", "Increased marketing strategies"], 
+           // { question: "A business has a fixed cost of ₱2,000. Each product sells for ₱200 with a variable cost of ₱100 per item. How many items must be sold to break even?", options: ["10", "15", "20", "25"], 
+            //{ question: "A seller forgets to include packaging and delivery preparation costs when computing product price. What is the MOST likely consequence?", options: ["Higher profits", "Marketing Strategies", "Decrease of sales", "Financial loss"], 
+            //{ question: "A business sells digital templates for ₱200 each. There are no shipping costs. What advantage does this product type provide?", options: ["Unlimited product copies", "High inventory requirements", "The seller doesn’t need to have physical store", "Easy to Deliver"], correct: 
+
+            //{ question: "A business receives 50 orders, but inventory only contains 35 products. What problem is occurring?", options: ["Product management system", "Incorrect Product listing", "Poor inventory management", "Financial loss"], correct: 
+           // { question: "A business receives payment but forgets to send the tracking number to customers. What is the MOST likely result?", options: ["Seller lacks of time due to over work", "Customer confusion and complaints", "Do not have impact or negative result", "Reduced workload"], 
+            //{ question: "A seller wants customers to complete purchases faster on the website. Which element should be emphasized?", options: ["Navigation menu", "Website Instructional Feature", "Provide User Manual", "Call-To-Action button"], 
+            //{ question: "A seller prepares products, verifies payment, packs items, books a courier, and sends tracking numbers. Which process is being performed?", options: ["Revenue computation", "Order fulfillment", "Product manufacturing", "Inventory labeling"], co
+            //{ question: "A business sells fragile glass items and uses plastic packaging. Which operational risk is MOST likely?", options: ["Higher Customer Complaints", "Payment failure", "Low Customer Service", "Product damage"], c
+
+            //{ question: "A customer visits an online store but cannot find product prices, descriptions, or delivery information. What is the MOST likely outcome?", options: ["The customer will ask the seller for product price", "The seller only just flexing the product", "The customer will leave the website quickly", "The customer will recommend the store"],
+            //{ question: "An online shop includes customer reviews, testimonials, and product ratings on its website. What marketing goal is this strategy primarily supporting?", options: ["Building trust and credibility", "Increasing production speed", "Reducing marketing cost", "Improving business control"], 
+            //{ question: "A startup clothing brand posts high-quality product photos regularly on social media and interacts with comments from followers. What marketing strategy is primarily being used?", options: ["Email Marketing", "Affiliate Marketing", "Communication Marketing", "Social Media Marketing"], 
+            //{ question: "A company writes blog posts explaining how to choose the best laptop bag while subtly recommending their products. Which digital marketing method does this represent?", options: ["Influencer Marketing", "Search Engine Marketing", "Content Marketing", "Display Advertising"], 
+            //{ question: "A skincare brand sends promotional messages announcing a new product launch and offering early-bird discounts. Which digital marketing channel is being used?", options: ["Email Marketing", "Influencer Marketing", "Social Media Marketing", "Content Marketing"], 
+
+            //{ question: "A fitness brand partners with a popular TikTok content creator who demonstrates their workout products in videos. Which marketing approach is this?", options: ["Social Media Marketing", "Influencer Marketing", "Search Marketing", "Email Marketing"], 
+            //{ question: "A student entrepreneur creates a marketing post that begins with a strong headline, explains product benefits, shows why customers need it, and ends with “Order Now!” Which marketing principle is being applied?", options: ["SWOT Strategy", "AIDA Principle", "Supply Chain Model", "Market Segmentation"], 
+            //{ question: "An online store posts only promotional ads daily. Followers gradually stop interacting with the page. Which issue is MOST likely causing this?", options: ["Lack of product engagement", "Poor customer satisfaction", "Lack of content variety", "Incorrect marketing strategy"], 
+            //{ question: "A clothing store posts high-quality images showing people actually wearing their products rather than displaying them on a table. What marketing advantage does this provide?", options: ["Helps customers visualize how the product looks when worn", "Demonstrates product usage", "Shows the real-life appearance of the clothing", "Highlights how the product fits different people"], 
+            //{ question: "A business page has a logo and cover photo but lacks contact details, description, and operating hours. What is the MOST likely consequence?", options: ["Lower customer trust", "Decreased brand reliability", "Reduced credibility", "Weaker business reputation"], 
+            
+           // { question: "A business wants to promote products without spending money on advertising. Which marketing strategy should they prioritize?", options: ["Paid advertising", "Organic social media marketing", "Television commercials", "Newspaper promotion"], 
+            //{ question: "A seller posts daily promotional content but receives low engagement. Analytics show followers prefer educational content. Which strategy would improve engagement?", options: ["Post more advertisements", "Post mostly promotional content", "Focus only on product photos", "Mix product posts with tutorials and tips"], c
+           // { question: "An entrepreneur launches a product but fails to explain how it solves customer problems. Which marketing step was missed?", options: ["Defining product value", "Creating social media accounts", "Choosing a courier service", "Preparing packaging"], 
+           // { question: "A marketing post captures attention but does not explain product benefits. Which stage of the AIDA model is missing?", options: ["Attention", "Interest", "Desire", "Action"], 
+           // { question: "A product page explains benefits but does not encourage customers to purchase. Which AIDA stage is missing?", options: ["Attention", "Interest", "Desire", "Action"], c    
+           //{ question: "A small online business sells customized mugs. The owner only produces the mugs after customers submit orders and payments. This approach helps the owner avoid unsold inventory. Which revenue model is being used?", options: ["Reseller Model", "Pre-Order Model", "Subscription Model", "Wholesale Model"], 
+            //{ question: "A business owner notices that customers often visit the website but leave without placing orders. After analyzing the site, the owner realizes there are no clear buttons encouraging customers to purchase. Which strategy would MOST effectively address this issue?", options: ["Add Call-To-Action buttons", "Increase product prices", "Use advertisement", "Encourage Product to Buy"],
+            //{ question: "A business sells school supplies online. Customers occasionally receive messages saying items are unavailable after placing orders. Which problem is MOST likely occurring?", options: ["Poor customer service", "Lack of inventory monitoring", "Problem about item", "Incorrect packaging"], correct: 
+            //{ question: "A customer asks several questions about delivery time, payment options, and product availability. The seller replies after two days. What is the MOST likely impact?", options: ["Impact for customer satisfaction", "Increased sales", "Loss of potential customers", "Improved business reputation"], 
+            //{ question: "A seller frequently receives the same questions from customers about payment methods and delivery schedules. What is the MOST efficient solution?", options: ["Ignore repeated questions", "Enable customer messaging", "Reply to all questions and inquiries", "Create prepared FAQ responses"], 
+
+            //{ question: "An entrepreneur receives negative feedback from a customer regarding damaged packaging. What is the BEST response?", options: ["Ignore the complaint it is normal sometimes", "Respond politely and offer a solution", "Message the customer about the complaint", "Delete the feedback and don’t let other see it"], 
+            //{ question: "A seller frequently forgets which orders have already been shipped. Which practice would BEST solve this issue?", options: ["Order tracking system", "Product order and shipment labeling", "Logbook of orders and shipped products", "Increased marketing strategies"], 
+           // { question: "A business has a fixed cost of ₱2,000. Each product sells for ₱200 with a variable cost of ₱100 per item. How many items must be sold to break even?", options: ["10", "15", "20", "25"], 
+            //{ question: "A seller forgets to include packaging and delivery preparation costs when computing product price. What is the MOST likely consequence?", options: ["Higher profits", "Marketing Strategies", "Decrease of sales", "Financial loss"], 
+            //{ question: "A business sells digital templates for ₱200 each. There are no shipping costs. What advantage does this product type provide?", options: ["Unlimited product copies", "High inventory requirements", "The seller doesn’t need to have physical store", "Easy to Deliver"], correct: 
+
+            //{ question: "A business receives 50 orders, but inventory only contains 35 products. What problem is occurring?", options: ["Product management system", "Incorrect Product listing", "Poor inventory management", "Financial loss"], correct: 
+           // { question: "A business receives payment but forgets to send the tracking number to customers. What is the MOST likely result?", options: ["Seller lacks of time due to over work", "Customer confusion and complaints", "Do not have impact or negative result", "Reduced workload"], 
+            //{ question: "A seller wants customers to complete purchases faster on the website. Which element should be emphasized?", options: ["Navigation menu", "Website Instructional Feature", "Provide User Manual", "Call-To-Action button"], 
+            //{ question: "A seller prepares products, verifies payment, packs items, books a courier, and sends tracking numbers. Which process is being performed?", options: ["Revenue computation", "Order fulfillment", "Product manufacturing", "Inventory labeling"], co
+            //{ question: "A business sells fragile glass items and uses plastic packaging. Which operational risk is MOST likely?", options: ["Higher Customer Complaints", "Payment failure", "Low Customer Service", "Product damage"], c
+
+            //{ question: "A customer visits an online store but cannot find product prices, descriptions, or delivery information. What is the MOST likely outcome?", options: ["The customer will ask the seller for product price", "The seller only just flexing the product", "The customer will leave the website quickly", "The customer will recommend the store"],
+            //{ question: "An online shop includes customer reviews, testimonials, and product ratings on its website. What marketing goal is this strategy primarily supporting?", options: ["Building trust and credibility", "Increasing production speed", "Reducing marketing cost", "Improving business control"], 
+            //{ question: "A startup clothing brand posts high-quality product photos regularly on social media and interacts with comments from followers. What marketing strategy is primarily being used?", options: ["Email Marketing", "Affiliate Marketing", "Communication Marketing", "Social Media Marketing"], 
+            //{ question: "A company writes blog posts explaining how to choose the best laptop bag while subtly recommending their products. Which digital marketing method does this represent?", options: ["Influencer Marketing", "Search Engine Marketing", "Content Marketing", "Display Advertising"], 
+            //{ question: "A skincare brand sends promotional messages announcing a new product launch and offering early-bird discounts. Which digital marketing channel is being used?", options: ["Email Marketing", "Influencer Marketing", "Social Media Marketing", "Content Marketing"], 
+
+            //{ question: "A fitness brand partners with a popular TikTok content creator who demonstrates their workout products in videos. Which marketing approach is this?", options: ["Social Media Marketing", "Influencer Marketing", "Search Marketing", "Email Marketing"], 
+            //{ question: "A student entrepreneur creates a marketing post that begins with a strong headline, explains product benefits, shows why customers need it, and ends with “Order Now!” Which marketing principle is being applied?", options: ["SWOT Strategy", "AIDA Principle", "Supply Chain Model", "Market Segmentation"], 
+            //{ question: "An online store posts only promotional ads daily. Followers gradually stop interacting with the page. Which issue is MOST likely causing this?", options: ["Lack of product engagement", "Poor customer satisfaction", "Lack of content variety", "Incorrect marketing strategy"], 
+            //{ question: "A clothing store posts high-quality images showing people actually wearing their products rather than displaying them on a table. What marketing advantage does this provide?", options: ["Helps customers visualize how the product looks when worn", "Demonstrates product usage", "Shows the real-life appearance of the clothing", "Highlights how the product fits different people"], 
+            //{ question: "A business page has a logo and cover photo but lacks contact details, description, and operating hours. What is the MOST likely consequence?", options: ["Lower customer trust", "Decreased brand reliability", "Reduced credibility", "Weaker business reputation"], 
+            
+           // { question: "A business wants to promote products without spending money on advertising. Which marketing strategy should they prioritize?", options: ["Paid advertising", "Organic social media marketing", "Television commercials", "Newspaper promotion"], 
+            //{ question: "A seller posts daily promotional content but receives low engagement. Analytics show followers prefer educational content. Which strategy would improve engagement?", options: ["Post more advertisements", "Post mostly promotional content", "Focus only on product photos", "Mix product posts with tutorials and tips"], c
+           // { question: "An entrepreneur launches a product but fails to explain how it solves customer problems. Which marketing step was missed?", options: ["Defining product value", "Creating social media accounts", "Choosing a courier service", "Preparing packaging"], 
+           // { question: "A marketing post captures attention but does not explain product benefits. Which stage of the AIDA model is missing?", options: ["Attention", "Interest", "Desire", "Action"], 
+           // { question: "A product page explains benefits but does not encourage customers to purchase. Which AIDA stage is missing?", options: ["Attention", "Interest", "Desire", "Action"], c   
+           //{ question: "A small online business sells customized mugs. The owner only produces the mugs after customers submit orders and payments. This approach helps the owner avoid unsold inventory. Which revenue model is being used?", options: ["Reseller Model", "Pre-Order Model", "Subscription Model", "Wholesale Model"], 
+            //{ question: "A business owner notices that customers often visit the website but leave without placing orders. After analyzing the site, the owner realizes there are no clear buttons encouraging customers to purchase. Which strategy would MOST effectively address this issue?", options: ["Add Call-To-Action buttons", "Increase product prices", "Use advertisement", "Encourage Product to Buy"],
+            //{ question: "A business sells school supplies online. Customers occasionally receive messages saying items are unavailable after placing orders. Which problem is MOST likely occurring?", options: ["Poor customer service", "Lack of inventory monitoring", "Problem about item", "Incorrect packaging"], correct: 
+            //{ question: "A customer asks several questions about delivery time, payment options, and product availability. The seller replies after two days. What is the MOST likely impact?", options: ["Impact for customer satisfaction", "Increased sales", "Loss of potential customers", "Improved business reputation"], 
+            //{ question: "A seller frequently receives the same questions from customers about payment methods and delivery schedules. What is the MOST efficient solution?", options: ["Ignore repeated questions", "Enable customer messaging", "Reply to all questions and inquiries", "Create prepared FAQ responses"], 
+
+            //{ question: "An entrepreneur receives negative feedback from a customer regarding damaged packaging. What is the BEST response?", options: ["Ignore the complaint it is normal sometimes", "Respond politely and offer a solution", "Message the customer about the complaint", "Delete the feedback and don’t let other see it"], 
+            //{ question: "A seller frequently forgets which orders have already been shipped. Which practice would BEST solve this issue?", options: ["Order tracking system", "Product order and shipment labeling", "Logbook of orders and shipped products", "Increased marketing strategies"], 
+           // { question: "A business has a fixed cost of ₱2,000. Each product sells for ₱200 with a variable cost of ₱100 per item. How many items must be sold to break even?", options: ["10", "15", "20", "25"], 
+            //{ question: "A seller forgets to include packaging and delivery preparation costs when computing product price. What is the MOST likely consequence?", options: ["Higher profits", "Marketing Strategies", "Decrease of sales", "Financial loss"], 
+            //{ question: "A business sells digital templates for ₱200 each. There are no shipping costs. What advantage does this product type provide?", options: ["Unlimited product copies", "High inventory requirements", "The seller doesn’t need to have physical store", "Easy to Deliver"], correct: 
+
+            //{ question: "A business receives 50 orders, but inventory only contains 35 products. What problem is occurring?", options: ["Product management system", "Incorrect Product listing", "Poor inventory management", "Financial loss"], correct: 
+           // { question: "A business receives payment but forgets to send the tracking number to customers. What is the MOST likely result?", options: ["Seller lacks of time due to over work", "Customer confusion and complaints", "Do not have impact or negative result", "Reduced workload"], 
+            //{ question: "A seller wants customers to complete purchases faster on the website. Which element should be emphasized?", options: ["Navigation menu", "Website Instructional Feature", "Provide User Manual", "Call-To-Action button"], 
+            //{ question: "A seller prepares products, verifies payment, packs items, books a courier, and sends tracking numbers. Which process is being performed?", options: ["Revenue computation", "Order fulfillment", "Product manufacturing", "Inventory labeling"], co
+            //{ question: "A business sells fragile glass items and uses plastic packaging. Which operational risk is MOST likely?", options: ["Higher Customer Complaints", "Payment failure", "Low Customer Service", "Product damage"], c
+
+            //{ question: "A customer visits an online store but cannot find product prices, descriptions, or delivery information. What is the MOST likely outcome?", options: ["The customer will ask the seller for product price", "The seller only just flexing the product", "The customer will leave the website quickly", "The customer will recommend the store"],
+            //{ question: "An online shop includes customer reviews, testimonials, and product ratings on its website. What marketing goal is this strategy primarily supporting?", options: ["Building trust and credibility", "Increasing production speed", "Reducing marketing cost", "Improving business control"], 
+            //{ question: "A startup clothing brand posts high-quality product photos regularly on social media and interacts with comments from followers. What marketing strategy is primarily being used?", options: ["Email Marketing", "Affiliate Marketing", "Communication Marketing", "Social Media Marketing"], 
+            //{ question: "A company writes blog posts explaining how to choose the best laptop bag while subtly recommending their products. Which digital marketing method does this represent?", options: ["Influencer Marketing", "Search Engine Marketing", "Content Marketing", "Display Advertising"], 
+            //{ question: "A skincare brand sends promotional messages announcing a new product launch and offering early-bird discounts. Which digital marketing channel is being used?", options: ["Email Marketing", "Influencer Marketing", "Social Media Marketing", "Content Marketing"], 
+
+            //{ question: "A fitness brand partners with a popular TikTok content creator who demonstrates their workout products in videos. Which marketing approach is this?", options: ["Social Media Marketing", "Influencer Marketing", "Search Marketing", "Email Marketing"], 
+            //{ question: "A student entrepreneur creates a marketing post that begins with a strong headline, explains product benefits, shows why customers need it, and ends with “Order Now!” Which marketing principle is being applied?", options: ["SWOT Strategy", "AIDA Principle", "Supply Chain Model", "Market Segmentation"], 
+            //{ question: "An online store posts only promotional ads daily. Followers gradually stop interacting with the page. Which issue is MOST likely causing this?", options: ["Lack of product engagement", "Poor customer satisfaction", "Lack of content variety", "Incorrect marketing strategy"], 
+            //{ question: "A clothing store posts high-quality images showing people actually wearing their products rather than displaying them on a table. What marketing advantage does this provide?", options: ["Helps customers visualize how the product looks when worn", "Demonstrates product usage", "Shows the real-life appearance of the clothing", "Highlights how the product fits different people"], 
+            //{ question: "A business page has a logo and cover photo but lacks contact details, description, and operating hours. What is the MOST likely consequence?", options: ["Lower customer trust", "Decreased brand reliability", "Reduced credibility", "Weaker business reputation"], 
+            
+           // { question: "A business wants to promote products without spending money on advertising. Which marketing strategy should they prioritize?", options: ["Paid advertising", "Organic social media marketing", "Television commercials", "Newspaper promotion"], 
+            //{ question: "A seller posts daily promotional content but receives low engagement. Analytics show followers prefer educational content. Which strategy would improve engagement?", options: ["Post more advertisements", "Post mostly promotional content", "Focus only on product photos", "Mix product posts with tutorials and tips"], c
+           // { question: "An entrepreneur launches a product but fails to explain how it solves customer problems. Which marketing step was missed?", options: ["Defining product value", "Creating social media accounts", "Choosing a courier service", "Preparing packaging"], 
+           // { question: "A marketing post captures attention but does not explain product benefits. Which stage of the AIDA model is missing?", options: ["Attention", "Interest", "Desire", "Action"], 
+           // { question: "A product page explains benefits but does not encourage customers to purchase. Which AIDA stage is missing?", options: ["Attention", "Interest", "Desire", "Action"], c   
+           //{ question: "A small online business sells customized mugs. The owner only produces the mugs after customers submit orders and payments. This approach helps the owner avoid unsold inventory. Which revenue model is being used?", options: ["Reseller Model", "Pre-Order Model", "Subscription Model", "Wholesale Model"], 
+            //{ question: "A business owner notices that customers often visit the website but leave without placing orders. After analyzing the site, the owner realizes there are no clear buttons encouraging customers to purchase. Which strategy would MOST effectively address this issue?", options: ["Add Call-To-Action buttons", "Increase product prices", "Use advertisement", "Encourage Product to Buy"],
+            //{ question: "A business sells school supplies online. Customers occasionally receive messages saying items are unavailable after placing orders. Which problem is MOST likely occurring?", options: ["Poor customer service", "Lack of inventory monitoring", "Problem about item", "Incorrect packaging"], correct: 
+            //{ question: "A customer asks several questions about delivery time, payment options, and product availability. The seller replies after two days. What is the MOST likely impact?", options: ["Impact for customer satisfaction", "Increased sales", "Loss of potential customers", "Improved business reputation"], 
+            //{ question: "A seller frequently receives the same questions from customers about payment methods and delivery schedules. What is the MOST efficient solution?", options: ["Ignore repeated questions", "Enable customer messaging", "Reply to all questions and inquiries", "Create prepared FAQ responses"], 
+
+            //{ question: "An entrepreneur receives negative feedback from a customer regarding damaged packaging. What is the BEST response?", options: ["Ignore the complaint it is normal sometimes", "Respond politely and offer a solution", "Message the customer about the complaint", "Delete the feedback and don’t let other see it"], 
+            //{ question: "A seller frequently forgets which orders have already been shipped. Which practice would BEST solve this issue?", options: ["Order tracking system", "Product order and shipment labeling", "Logbook of orders and shipped products", "Increased marketing strategies"], 
+           // { question: "A business has a fixed cost of ₱2,000. Each product sells for ₱200 with a variable cost of ₱100 per item. How many items must be sold to break even?", options: ["10", "15", "20", "25"], 
+            //{ question: "A seller forgets to include packaging and delivery preparation costs when computing product price. What is the MOST likely consequence?", options: ["Higher profits", "Marketing Strategies", "Decrease of sales", "Financial loss"], 
+            //{ question: "A business sells digital templates for ₱200 each. There are no shipping costs. What advantage does this product type provide?", options: ["Unlimited product copies", "High inventory requirements", "The seller doesn’t need to have physical store", "Easy to Deliver"], correct: 
+
+            //{ question: "A business receives 50 orders, but inventory only contains 35 products. What problem is occurring?", options: ["Product management system", "Incorrect Product listing", "Poor inventory management", "Financial loss"], correct: 
+           // { question: "A business receives payment but forgets to send the tracking number to customers. What is the MOST likely result?", options: ["Seller lacks of time due to over work", "Customer confusion and complaints", "Do not have impact or negative result", "Reduced workload"], 
+            //{ question: "A seller wants customers to complete purchases faster on the website. Which element should be emphasized?", options: ["Navigation menu", "Website Instructional Feature", "Provide User Manual", "Call-To-Action button"], 
+            //{ question: "A seller prepares products, verifies payment, packs items, books a courier, and sends tracking numbers. Which process is being performed?", options: ["Revenue computation", "Order fulfillment", "Product manufacturing", "Inventory labeling"], co
+            //{ question: "A business sells fragile glass items and uses plastic packaging. Which operational risk is MOST likely?", options: ["Higher Customer Complaints", "Payment failure", "Low Customer Service", "Product damage"], c
+
+            //{ question: "A customer visits an online store but cannot find product prices, descriptions, or delivery information. What is the MOST likely outcome?", options: ["The customer will ask the seller for product price", "The seller only just flexing the product", "The customer will leave the website quickly", "The customer will recommend the store"],
+            //{ question: "An online shop includes customer reviews, testimonials, and product ratings on its website. What marketing goal is this strategy primarily supporting?", options: ["Building trust and credibility", "Increasing production speed", "Reducing marketing cost", "Improving business control"], 
+            //{ question: "A startup clothing brand posts high-quality product photos regularly on social media and interacts with comments from followers. What marketing strategy is primarily being used?", options: ["Email Marketing", "Affiliate Marketing", "Communication Marketing", "Social Media Marketing"], 
+            //{ question: "A company writes blog posts explaining how to choose the best laptop bag while subtly recommending their products. Which digital marketing method does this represent?", options: ["Influencer Marketing", "Search Engine Marketing", "Content Marketing", "Display Advertising"], 
+            //{ question: "A skincare brand sends promotional messages announcing a new product launch and offering early-bird discounts. Which digital marketing channel is being used?", options: ["Email Marketing", "Influencer Marketing", "Social Media Marketing", "Content Marketing"], 
+
+            //{ question: "A fitness brand partners with a popular TikTok content creator who demonstrates their workout products in videos. Which marketing approach is this?", options: ["Social Media Marketing", "Influencer Marketing", "Search Marketing", "Email Marketing"], 
+            //{ question: "A student entrepreneur creates a marketing post that begins with a strong headline, explains product benefits, shows why customers need it, and ends with “Order Now!” Which marketing principle is being applied?", options: ["SWOT Strategy", "AIDA Principle", "Supply Chain Model", "Market Segmentation"], 
+            //{ question: "An online store posts only promotional ads daily. Followers gradually stop interacting with the page. Which issue is MOST likely causing this?", options: ["Lack of product engagement", "Poor customer satisfaction", "Lack of content variety", "Incorrect marketing strategy"], 
+            //{ question: "A clothing store posts high-quality images showing people actually wearing their products rather than displaying them on a table. What marketing advantage does this provide?", options: ["Helps customers visualize how the product looks when worn", "Demonstrates product usage", "Shows the real-life appearance of the clothing", "Highlights how the product fits different people"], 
+            //{ question: "A business page has a logo and cover photo but lacks contact details, description, and operating hours. What is the MOST likely consequence?", options: ["Lower customer trust", "Decreased brand reliability", "Reduced credibility", "Weaker business reputation"], 
+            
+           // { question: "A business wants to promote products without spending money on advertising. Which marketing strategy should they prioritize?", options: ["Paid advertising", "Organic social media marketing", "Television commercials", "Newspaper promotion"], 
+            //{ question: "A seller posts daily promotional content but receives low engagement. Analytics show followers prefer educational content. Which strategy would improve engagement?", options: ["Post more advertisements", "Post mostly promotional content", "Focus only on product photos", "Mix product posts with tutorials and tips"], c
+           // { question: "An entrepreneur launches a product but fails to explain how it solves customer problems. Which marketing step was missed?", options: ["Defining product value", "Creating social media accounts", "Choosing a courier service", "Preparing packaging"], 
+           // { question: "A marketing post captures attention but does not explain product benefits. Which stage of the AIDA model is missing?", options: ["Attention", "Interest", "Desire", "Action"], 
+           // { question: "A product page explains benefits but does not encourage customers to purchase. Which AIDA stage is missing?", options: ["Attention", "Interest", "Desire", "Action"], c   
+           //{ question: "A small online business sells customized mugs. The owner only produces the mugs after customers submit orders and payments. This approach helps the owner avoid unsold inventory. Which revenue model is being used?", options: ["Reseller Model", "Pre-Order Model", "Subscription Model", "Wholesale Model"], 
+            //{ question: "A business owner notices that customers often visit the website but leave without placing orders. After analyzing the site, the owner realizes there are no clear buttons encouraging customers to purchase. Which strategy would MOST effectively address this issue?", options: ["Add Call-To-Action buttons", "Increase product prices", "Use advertisement", "Encourage Product to Buy"],
+            //{ question: "A business sells school supplies online. Customers occasionally receive messages saying items are unavailable after placing orders. Which problem is MOST likely occurring?", options: ["Poor customer service", "Lack of inventory monitoring", "Problem about item", "Incorrect packaging"], correct: 
+            //{ question: "A customer asks several questions about delivery time, payment options, and product availability. The seller replies after two days. What is the MOST likely impact?", options: ["Impact for customer satisfaction", "Increased sales", "Loss of potential customers", "Improved business reputation"], 
+            //{ question: "A seller frequently receives the same questions from customers about payment methods and delivery schedules. What is the MOST efficient solution?", options: ["Ignore repeated questions", "Enable customer messaging", "Reply to all questions and inquiries", "Create prepared FAQ responses"], 
+
+            //{ question: "An entrepreneur receives negative feedback from a customer regarding damaged packaging. What is the BEST response?", options: ["Ignore the complaint it is normal sometimes", "Respond politely and offer a solution", "Message the customer about the complaint", "Delete the feedback and don’t let other see it"], 
+            //{ question: "A seller frequently forgets which orders have already been shipped. Which practice would BEST solve this issue?", options: ["Order tracking system", "Product order and shipment labeling", "Logbook of orders and shipped products", "Increased marketing strategies"], 
+           // { question: "A business has a fixed cost of ₱2,000. Each product sells for ₱200 with a variable cost of ₱100 per item. How many items must be sold to break even?", options: ["10", "15", "20", "25"], 
+            //{ question: "A seller forgets to include packaging and delivery preparation costs when computing product price. What is the MOST likely consequence?", options: ["Higher profits", "Marketing Strategies", "Decrease of sales", "Financial loss"], 
+            //{ question: "A business sells digital templates for ₱200 each. There are no shipping costs. What advantage does this product type provide?", options: ["Unlimited product copies", "High inventory requirements", "The seller doesn’t need to have physical store", "Easy to Deliver"], correct: 
+
+            //{ question: "A business receives 50 orders, but inventory only contains 35 products. What problem is occurring?", options: ["Product management system", "Incorrect Product listing", "Poor inventory management", "Financial loss"], correct: 
+           // { question: "A business receives payment but forgets to send the tracking number to customers. What is the MOST likely result?", options: ["Seller lacks of time due to over work", "Customer confusion and complaints", "Do not have impact or negative result", "Reduced workload"], 
+            //{ question: "A seller wants customers to complete purchases faster on the website. Which element should be emphasized?", options: ["Navigation menu", "Website Instructional Feature", "Provide User Manual", "Call-To-Action button"], 
+            //{ question: "A seller prepares products, verifies payment, packs items, books a courier, and sends tracking numbers. Which process is being performed?", options: ["Revenue computation", "Order fulfillment", "Product manufacturing", "Inventory labeling"], co
+            //{ question: "A business sells fragile glass items and uses plastic packaging. Which operational risk is MOST likely?", options: ["Higher Customer Complaints", "Payment failure", "Low Customer Service", "Product damage"], c
+
+            //{ question: "A customer visits an online store but cannot find product prices, descriptions, or delivery information. What is the MOST likely outcome?", options: ["The customer will ask the seller for product price", "The seller only just flexing the product", "The customer will leave the website quickly", "The customer will recommend the store"],
+            //{ question: "An online shop includes customer reviews, testimonials, and product ratings on its website. What marketing goal is this strategy primarily supporting?", options: ["Building trust and credibility", "Increasing production speed", "Reducing marketing cost", "Improving business control"], 
+            //{ question: "A startup clothing brand posts high-quality product photos regularly on social media and interacts with comments from followers. What marketing strategy is primarily being used?", options: ["Email Marketing", "Affiliate Marketing", "Communication Marketing", "Social Media Marketing"], 
+            //{ question: "A company writes blog posts explaining how to choose the best laptop bag while subtly recommending their products. Which digital marketing method does this represent?", options: ["Influencer Marketing", "Search Engine Marketing", "Content Marketing", "Display Advertising"], 
+            //{ question: "A skincare brand sends promotional messages announcing a new product launch and offering early-bird discounts. Which digital marketing channel is being used?", options: ["Email Marketing", "Influencer Marketing", "Social Media Marketing", "Content Marketing"], 
+
+            //{ question: "A fitness brand partners with a popular TikTok content creator who demonstrates their workout products in videos. Which marketing approach is this?", options: ["Social Media Marketing", "Influencer Marketing", "Search Marketing", "Email Marketing"], 
+            //{ question: "A student entrepreneur creates a marketing post that begins with a strong headline, explains product benefits, shows why customers need it, and ends with “Order Now!” Which marketing principle is being applied?", options: ["SWOT Strategy", "AIDA Principle", "Supply Chain Model", "Market Segmentation"], 
+            //{ question: "An online store posts only promotional ads daily. Followers gradually stop interacting with the page. Which issue is MOST likely causing this?", options: ["Lack of product engagement", "Poor customer satisfaction", "Lack of content variety", "Incorrect marketing strategy"], 
+            //{ question: "A clothing store posts high-quality images showing people actually wearing their products rather than displaying them on a table. What marketing advantage does this provide?", options: ["Helps customers visualize how the product looks when worn", "Demonstrates product usage", "Shows the real-life appearance of the clothing", "Highlights how the product fits different people"], 
+            //{ question: "A business page has a logo and cover photo but lacks contact details, description, and operating hours. What is the MOST likely consequence?", options: ["Lower customer trust", "Decreased brand reliability", "Reduced credibility", "Weaker business reputation"], 
+            
+           // { question: "A business wants to promote products without spending money on advertising. Which marketing strategy should they prioritize?", options: ["Paid advertising", "Organic social media marketing", "Television commercials", "Newspaper promotion"], 
+            //{ question: "A seller posts daily promotional content but receives low engagement. Analytics show followers prefer educational content. Which strategy would improve engagement?", options: ["Post more advertisements", "Post mostly promotional content", "Focus only on product photos", "Mix product posts with tutorials and tips"], c
+           // { question: "An entrepreneur launches a product but fails to explain how it solves customer problems. Which marketing step was missed?", options: ["Defining product value", "Creating social media accounts", "Choosing a courier service", "Preparing packaging"], 
+           // { question: "A marketing post captures attention but does not explain product benefits. Which stage of the AIDA model is missing?", options: ["Attention", "Interest", "Desire", "Action"], 
+           // { question: "A product page explains benefits but does not encourage customers to purchase. Which AIDA stage is missing?", options: ["Attention", "Interest", "Desire", "Action"], c   
+
+
+
+
+            { question: "A student enters their age, and the program must use an integer. Which code is correct?", options: ["int age = Convert.ToInt32(Console.ReadLine());", "int age = Console.ReadLine();", "int age = Console.WriteLine();", "int age = 18;"], correct:  0},
+            { question: "What will be displayed? Console.Write(Hello); Console.WriteLine(World);", options: ["Hello", "Hello World", "World", "Error"], correct:  3},
+            { question: "What does Console.ReadLine() do?", options: ["Prints text", "Showing numbers and letters", "Reads an entire line of user input", "Stops the program"], correct:  2},
+            { question: "A program should display:", options: ["Console.WriteLine(\"Enter your score:\");", "Console.Write(\"Enter your score:\");", "Both A and B", "None"], correct:  2},
+            { question: "What is the output? int num = 5; Console.WriteLine(\"Number is \" + Num); ", options: ["Number is", "Number is 5", "5", "Error"], correct:  3},
+
+            { question: "What happens if the user enters a letter when using Convert.ToInt32(Console.ReadLine())?", options: ["Program runs normally", "Program crashes", "Converts letter to number", "Displays zero"], correct:  1},
+            { question: "What will this print? Console.Writeline(\"Welcome to C# Programming\");", options: ["Nothing", "Welcome to C# Programming", "Error", "Programming"], correct:  2},
+            { question: "A grading system checks if score >= 75 then print “Passed”.", options: ["if(score = 75) { Console.WriteLine(\"Passed\");  }", "if(score < 75) { Console.WriteLine(\"Passed\");  }", "if(score != 75) {  Console.WriteLine(\"Passed\"); } ", "if(score > 74) { Console.WriteLine(\"Passed\");  }"], correct:  2},
+            { question: "What will the output be? int age = 18; if(age > 18) { Console.WriteLine(\"Adult\"); } else { Console.WriteLine(\"Minor\"); }", options: ["Adult", "Minor", "Error", "Nothing"], correct:  0},
+            { question: "What will be printed? int num = 10; if(num > 20){ Console.WriteLine(\"High\");} else { Console.WriteLine(\"Low\"); }", options: ["Low", "High", "Error", "Nothing"], correct:  0},
+
+            { question: "Which operator means AND condition?", options: ["&", "AND", "&&", "AND CONDITION"], correct:  2},
+            { question: "What will this output? int temp = 35;  if(temp > 30) { Console.WriteLine(Hot); } ", options: ["Hot", "Cold", "Nothing", "Error"], correct:  3},
+            { question: "Which keyword executes code when condition is false?", options: ["else", "if", "switch", "case"], correct:  0},
+            { question: "Which keyword runs when no case matches?", options: ["else", "default", "case", "continue"], correct:  1},
+            { question: "Correct syntax?", options: ["switch{variable}", "switch(variable)", "switch = variable", "switch variable"], correct:  1},
+
+            { question: "Switch is commonly used instead of?", options: ["Loop", "Array", "Nested Switch", "Multiple if-else"], correct:  3},
+            { question: "What happens if break is removed?", options: ["Next case executes", "Compilation error", "Program stops", "Nothing"], correct:  0},
+            { question: "Which type works with switch?", options: ["int", "char", "string", "All of the above"], correct:  3},
+            { question: "Which loop repeats code while a condition is true?", options: ["for", "while", "do-while", "All of the above"], correct:  3},
+            { question: "What is the output of the following code? for(int i = 1; i < 3; i++) { Console.WriteLine(i); }", options: ["1 2 3", "0 1 2", "1 2", "Infinite"], correct:  2},
+
+            { question: "Which loop executes at least once even if the condition is false?", options: ["do-while", "for", "while", "nested loop"], correct:  0},
+            { question: "How many times will \"Hello\" print? for(int i = 0; i <= 5; i++) { Console.WriteLine(\"Hello\"); }", options: ["4", "6", "5", "Infinite"], correct:  1},
+            { question: "What happens in this code? int i = 1; while(i <= 3) { Console.WriteLine(i); }", options: ["Prints 1 2 3", "Compilation error", "Infinite loop", "Prints nothing"], correct:  2},
+            { question: "Which loop is best when the number of repetitions is already known?", options: ["All of the above", "while", "do-while", "for"], correct:  3},
+            { question: "What is an array in programming?", options: ["A group of variables declared separately but used together", "A variable that can store only one value at a time", "A list of inputs entered by the user during program execution", "A collection of elements stored in one variable using indexes"], correct:  3},
+
+            { question: "What will be printed? int[] numbers = {10,20,30}; Console.Writeline(numbers[1]);", options: ["10", "20", "30", "ERROR"], correct:  1}, 
+            { question: "Given the following C# code, what value will be printed on the screen? int[] nums = {1,2,3,4,5}; Console.WriteLine(nums.Length);", options: ["4", "6", "5", "1"], correct:  2},
+            { question: "Which loop is commonly used to access array elements?", options: ["swtich", "if", "case", "for"], correct:  3},
+            { question: "What will be printed? int[] a = {5,10,15}; for(int i = 0; i < 3; i++) { Console.WriteLine(a[i]); }", options: ["5 10 15", "5 10", "10 15", "ERROR"], correct:  0},
+            { question: "Which code initializes an array with values?", options: ["int[] num = 1,2,3;", "int num[] {1,2,3};", "int[] num = {1,2,3};", "int num = {1,2,3};"], correct:  2}
+        
+        ];
+        document.getElementById("question-count1").textContent = allQuestions.length;
+        document.getElementById("question-count2").textContent = allQuestions.length;
+        document.getElementById("question-count3").textContent = allQuestions.length;
+        document.getElementById("question-count4").textContent = allQuestions.length;
+        let questions = [];
+        let currentQuestion = 0;
+        let score = 0;
+        let timeLeft = 60;
+        let timer = null;
+        let userAnswers = [];
+        let wrongCount = 0;
+        let timeoutCount = 0;
+
+        function shuffleArray(array) {
+            const shuffled = [...array];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        }
+
+        function startQuiz() {
+            questions = shuffleArray(allQuestions);
+            currentQuestion = 0;
+            score = 0;
+            wrongCount = 0;
+            timeoutCount = 0;
+            userAnswers = [];
+
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('quiz-screen').classList.remove('hidden');
+            document.getElementById('results-screen').classList.add('hidden');
+            document.getElementById('review-screen').classList.add('hidden');
+
+            showQuestion();
+        }
+
+        function showQuestion() {
+            const q = questions[currentQuestion];
+            document.getElementById('question-text').textContent = q.question;
+            document.getElementById('current-q').textContent = currentQuestion + 1;
+            document.getElementById('current-score').textContent = score;
+            document.getElementById('progress-bar').style.width = ((currentQuestion + 1) / questions.length * 100) + '%';
+
+            const container = document.getElementById('options-container');
+            container.innerHTML = '';
+
+            q.options.forEach((option, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn w-full text-left p-4 bg-slate-700/50 hover:bg-slate-700 border-2 border-slate-600 rounded-xl transition-all';
+                btn.innerHTML = `<span class="inline-block w-8 h-8 rounded-lg bg-slate-600 text-center leading-8 mr-3 font-semibold">${String.fromCharCode(65 + index)}</span>${option}`;
+                btn.onclick = () => selectAnswer(index);
+                container.appendChild(btn);
+            });
+
+            document.getElementById('question-card').classList.remove('animate-slide-in');
+            void document.getElementById('question-card').offsetWidth;
+            document.getElementById('question-card').classList.add('animate-slide-in');
+
+            document.getElementById('feedback').classList.add('hidden');
+
+            startTimer();
+        }
+
+        function startTimer() {
+            timeLeft = 60;
+            updateTimerDisplay();
+
+            const timerContainer = document.getElementById('timer-container');
+            timerContainer.className = 'w-20 h-20 rounded-full bg-slate-800 border-4 border-violet-500 flex items-center justify-center timer-ring';
+
+            timer = setInterval(() => {
+                timeLeft--;
+                updateTimerDisplay();
+
+                if (timeLeft <= 10) {
+                    timerContainer.className = 'w-20 h-20 rounded-full border-4 border-red-500 flex items-center justify-center timer-warning';
+                }
+
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    handleTimeout();
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            document.getElementById('timer').textContent = timeLeft;
+        }
+
+        function handleTimeout() {
+            timeoutCount++;
+            userAnswers.push({ questionIndex: currentQuestion, selected: -1, correct: questions[currentQuestion].correct, timedOut: true });
+
+            showFeedback(false, true);
+
+            setTimeout(() => {
+                nextQuestion();
+            }, 1500);
+        }
+
+        function selectAnswer(index) {
+            clearInterval(timer);
+
+            const q = questions[currentQuestion];
+            const isCorrect = index === q.correct;
+
+            if (isCorrect) {
+                score++;
+            } else {
+                wrongCount++;
+            }
+
+            userAnswers.push({ questionIndex: currentQuestion, selected: index, correct: q.correct, timedOut: false });
+
+            const buttons = document.querySelectorAll('.option-btn');
+            buttons.forEach((btn, i) => {
+                btn.disabled = true;
+                if (i === q.correct) {
+                    btn.classList.add('correct-answer');
+                } else if (i === index && !isCorrect) {
+                    btn.classList.add('wrong-answer');
+                }
+            });
+
+            showFeedback(isCorrect, false);
+
+            setTimeout(() => {
+                nextQuestion();
+            }, 1500);
+        }
+
+        function showFeedback(isCorrect, timedOut) {
+            const feedback = document.getElementById('feedback');
+            feedback.classList.remove('hidden');
+
+            if (timedOut) {
+                feedback.className = 'text-center py-3 rounded-xl font-semibold bg-yellow-500/20 text-yellow-400 border border-yellow-500/30';
+                feedback.textContent = "⏰ Time's up! Moving to next question...";
+            } else if (isCorrect) {
+                feedback.className = 'text-center py-3 rounded-xl font-semibold bg-green-500/20 text-green-400 border border-green-500/30';
+                feedback.textContent = '✓ Correct! Well done!';
+            } else {
+                feedback.className = 'text-center py-3 rounded-xl font-semibold bg-red-500/20 text-red-400 border border-red-500/30';
+                feedback.textContent = '✗ Incorrect! The correct answer is highlighted.';
+            }
+        }
+
+        function nextQuestion() {
+            currentQuestion++;
+
+            if (currentQuestion < questions.length) {
+                showQuestion();
+            } else {
+                showResults();
+            }
+        }
+
+        function showResults() {
+            document.getElementById('quiz-screen').classList.add('hidden');
+            document.getElementById('results-screen').classList.remove('hidden');
+
+            document.getElementById('final-score').textContent = score;
+            document.getElementById('correct-count').textContent = score;
+            document.getElementById('wrong-count').textContent = wrongCount;
+            document.getElementById('timeout-count').textContent = timeoutCount;
+
+            const percentage = (score / questions.length) * 100;
+            let emoji = '🏆';
+            if (percentage >= 90) emoji = '🏆';
+            else if (percentage >= 70) emoji = '🎉';
+            else if (percentage >= 50) emoji = '👍';
+            else if (percentage >= 30) emoji = '📚';
+            else emoji = '💪';
+
+            document.getElementById('result-emoji').textContent = emoji;
+        }
+
+        function restartQuiz() {
+            startQuiz();
+        }
+
+        function reviewAnswers() {
+            document.getElementById('results-screen').classList.add('hidden');
+            document.getElementById('review-screen').classList.remove('hidden');
+
+            const container = document.getElementById('review-container');
+            container.innerHTML = '';
+
+            userAnswers.forEach((answer, index) => {
+                const q = questions[answer.questionIndex];
+                const isCorrect = answer.selected === answer.correct;
+
+                const card = document.createElement('div');
+                card.className = `p-6 rounded-xl border ${isCorrect ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'}`;
+
+                let statusText = '';
+                if (answer.timedOut) {
+                    statusText = '<span class="text-yellow-400">⏰ Timed Out</span>';
+                } else if (isCorrect) {
+                    statusText = '<span class="text-green-400">✓ Correct</span>';
+                } else {
+                    statusText = '<span class="text-red-400">✗ Incorrect</span>';
+                }
+
+                card.innerHTML = `
+          <div class="flex justify-between items-start mb-3">
+            <span class="text-slate-400 text-sm">Question ${index + 1}</span>
+            ${statusText}
+          </div>
+          <p class="font-semibold mb-3">${q.question}</p>
+          <p class="text-sm text-slate-400 mb-1">Your answer: <span class="${isCorrect ? 'text-green-400' : 'text-red-400'}">${answer.timedOut ? 'No answer' : q.options[answer.selected]}</span></p>
+          ${!isCorrect ? `<p class="text-sm text-slate-400">Correct answer: <span class="text-green-400">${q.options[answer.correct]}</span></p>` : ''}
+        `;
+
+                container.appendChild(card);
+            });
+        }
+
+        function backToResults() {
+            document.getElementById('review-screen').classList.add('hidden');
+            document.getElementById('results-screen').classList.remove('hidden');
+        }
+
+        function applyConfig(config) {
+            const title = config.quiz_title || defaultConfig.quiz_title;
+            const btnText = config.start_button_text || defaultConfig.start_button_text;
+
+            document.getElementById('quiz-title').textContent = title;
+            document.getElementById('start-btn').textContent = btnText;
+        }
+
+        if (window.elementSdk) {
+            window.elementSdk.init({
+                defaultConfig,
+                onConfigChange: async (config) => {
+                    applyConfig(config);
+                },
+                mapToCapabilities: (config) => ({
+                    recolorables: [],
+                    borderables: [],
+                    fontEditable: undefined,
+                    fontSizeable: undefined
+                }),
+                mapToEditPanelValues: (config) => new Map([
+                    ['quiz_title', config.quiz_title || defaultConfig.quiz_title],
+                    ['start_button_text', config.start_button_text || defaultConfig.start_button_text]
+                ])
+            });
+        }
+
+        applyConfig(defaultConfig);
+
+        function submitScore() {
+
+            const name = document.getElementById("student-name").value;
+            const studentScore = score;
+
+            const formURL = "https://docs.google.com/forms/d/e/1FAIpQLSfn6e1mtwj3TvB-XK4iWADhhu7bnnnO14Mcj6D5ozqnkNr35A/formResponse";
+
+            const nameEntry = "entry.266572392";
+            const scoreEntry = "entry.575552486";
+
+            const url = formURL + "?" +
+                nameEntry + "=" + encodeURIComponent(name) +
+                "&" +
+                scoreEntry + "=" + encodeURIComponent(studentScore);
+
+            fetch(url, { mode: "no-cors" });
+
+            alert("Score submitted successfully!");
+        }
+
+        
+    </script>
+    <script>(function () { function c() { var b = a.contentDocument || a.contentWindow.document; if (b) { var d = b.createElement('script'); d.innerHTML = "window.__CF$cv$params={r:'9d8b06e7f1fffecd',t:'MTc3MjkwMTQ3MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);"; b.getElementsByTagName('head')[0].appendChild(d) } } if (document.body) { var a = document.createElement('iframe'); a.height = 1; a.width = 1; a.style.position = 'absolute'; a.style.top = 0; a.style.left = 0; a.style.border = 'none'; a.style.visibility = 'hidden'; document.body.appendChild(a); if ('loading' !== document.readyState) c(); else if (window.addEventListener) document.addEventListener('DOMContentLoaded', c); else { var e = document.onreadystatechange || function () { }; document.onreadystatechange = function (b) { e(b); 'loading' !== document.readyState && (document.onreadystatechange = e, c()) } } } })();</script>
+</body>
+
+</html>
